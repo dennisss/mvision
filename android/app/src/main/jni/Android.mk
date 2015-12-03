@@ -10,7 +10,7 @@ LOCAL_C_INCLUDES := $(EXTERNAL)/eigen
 #OPENCV_CAMERA_MODULES := off
 #OPENCV_INSTALL_MODULES := off
 #OPENCV_LIB_TYPE := SHARED
-include $(EXTERNAL)/opencv/sdk/native/jni/OpenCV.mk
+#include $(EXTERNAL)/opencv/sdk/native/jni/OpenCV.mk
 
 
 

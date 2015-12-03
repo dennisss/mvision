@@ -5,11 +5,11 @@
 #include <jni.h>
 #include <time.h>
 
-
+/*
 #include <opencv2/core/core.hpp>
 
 using namespace cv;
-
+*/
 
 
 #ifdef __cplusplus
@@ -31,7 +31,7 @@ JNIEXPORT void JNICALL Java_me_denniss_mvision_vio_VisualInertialOdometry_destru
 JNIEXPORT void JNICALL Java_me_denniss_mvision_vio_VisualInertialOdometry_onNativeCameraFrame(JNIEnv* env, jlong inst, jlong frameptr){
 
     VIO *self = (VIO *) inst;
-    Mat &img = *(Mat *) frameptr;
+    //Mat &img = *(Mat *) frameptr;
 
     clock_t t = clock();
 

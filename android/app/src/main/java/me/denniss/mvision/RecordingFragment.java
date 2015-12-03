@@ -41,7 +41,6 @@ import android.widget.CompoundButton;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
-import org.opencv.android.CameraBridgeViewBase;
 
 import java.io.File;
 import java.io.IOException;
@@ -58,8 +57,9 @@ import java.util.concurrent.TimeUnit;
 public class RecordingFragment extends Fragment implements View.OnClickListener {
 
 
-    private static native void startNativeRecording(String prefix);
-    private static native void stopNativeRecording();
+    // These are for recording the IMU readings really quickly
+    private native void startNativeRecording(String prefix);
+    private native void stopNativeRecording();
 
 
 
@@ -152,11 +152,11 @@ public class RecordingFragment extends Fragment implements View.OnClickListener 
 
                     stopNativeRecording();
 
-                    getVideoFile(getActivity()).renameTo(new File(prefix + ".mp4"));
+                    //getVideoFile(getActivity()).renameTo(new File(prefix + ".mp4"));
 
                 } else {
 
-                    prefix = "/sdcard/MVision/" + (System.currentTimeMillis() / 1000L);
+                    prefix = "/sdcard/MVision/" +  (System.currentTimeMillis() * 1000000L);
 
                     startRecordingVideo();
                     startNativeRecording(prefix);

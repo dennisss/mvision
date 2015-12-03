@@ -2,21 +2,12 @@ package me.denniss.mvision.vio;
 
 import android.util.Log;
 
-import org.opencv.android.CameraBridgeViewBase;
-import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
-import org.opencv.core.Mat;
-import org.opencv.core.Size;
-
-import static org.opencv.imgproc.Imgproc.resize;
 
 /**
  * Created by dennis on 8/20/15.
  */
-public class VisualInertialOdometry implements CvCameraViewListener2 {
+public class VisualInertialOdometry {
 
-    static {
-//        System.loadLibrary("vio");
-    }
 
     public VisualInertialOdometry(){
 
@@ -43,6 +34,7 @@ public class VisualInertialOdometry implements CvCameraViewListener2 {
         //mRgba.release();
     }
 
+    /*
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame frame) {
 
         Mat img = frame.rgba();
@@ -61,7 +53,7 @@ public class VisualInertialOdometry implements CvCameraViewListener2 {
         return img;
 
     }
-
+    */
 
 /*
     public void startRecording(){

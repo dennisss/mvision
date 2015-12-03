@@ -1,11 +1,40 @@
-// Code for getting raw IMU data
-
+/*
+ * Code for getting raw IMU data
+ * Internally, the accelerometer and gyroscope readings are received at different times,
+ * so this code abstracts it such that they are returned simultaneously by interpolating readings
+ * and returning those values and the
+ */
 #include "inertial.h"
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
 
 #include <android/looper.h>
 #include <android/sensor.h>
+
+
+
+
+static uint64_t startreal; // The start time relative to epoch
+static uint64_t starttime; // The start time for the monotonic clock
+
+#define RELATIVE_TIME ((gettime() - starttime) + startreal)
+
+static uint64_t getrealtime(){
+	struct timespec now;
+	clock_gettime(CLOCK_REALTIME, &now);
+	return (uint64_t) now.tv_nsec + ((uint64_t) now.tv_sec * 1000000000);
+}
+
+static uint64_t gettime(){
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+	return (uint64_t) now.tv_nsec + ((uint64_t) now.tv_sec * 1000000000);
+}
+
+
+
 
 
 static ASensorManager *sensorManager;
@@ -19,91 +48,95 @@ static const ASensor *accelSensor;
 static inertial_listener current_listener = NULL;
 
 
+uint64_t lastAccelRelTime = 0;
+uint64_t lastRotatRelTime = 0;
 
-//int accCounter = 0;
-int64_t lastAccTime = 0;
+uint64_t lastAccelTime;
+uint64_t lastRotatTime;
 
-//int gyroCounter = 0;
-int64_t lastGyroTime = 0;
-
-//int magCounter = 0;
-int64_t lastMagTime = 0;
+static float lastAccel[3] = {0,0,0};
+static float lastRotat[3] = {0,0,0};
 
 
+//static uint64_t lastTime;
+
+/*
+	Receives events from the looper
+ 	We emit an event every time an gyroscope event is received. The accelerometer is interpolated
+
+ */
+static ASensorEvent eventBuffer[1];
 static int get_sensor_events(int fd, int events, void *data) {
 
-	ASensorEvent eventBuffer[3];
+	ASensorEvent &event = eventBuffer[0];
 
-	float accel[3] = {0,0,0};
-	float rotat[3] = {0,0,0};
-	float magnet[3];
+	// TODO: Add interpolation of one of the values (depending on which one came in first)
 
 
-	//float ax = 0, ay = 0, az = 0, gx = 0, gy = 0, gz = 0, mx = 0, my = 0, mz = 0;
-	int64_t accTime;
-	int64_t gyroTime;
-	int64_t magTime;
+	int n = ASensorEventQueue_getEvents(eventQueue, eventBuffer, 1);
+	if(n == 1){ // If I got an event
 
-	int n = ASensorEventQueue_getEvents(eventQueue, eventBuffer, 3);
-	for(int i = 0; i < 2; i++){
-		ASensorEvent &event = eventBuffer[i];
+		if(event.type == ASENSOR_TYPE_ACCELEROMETER){
 
-		if(event.type == ASENSOR_TYPE_ACCELEROMETER) {
-		//	LOGI("accl(x,y,z,t): %f %f %f %lld", event.acceleration.x, event.acceleration.y, event.acceleration.z, event.timestamp);
-			accel[0] = event.acceleration.x;
-			accel[1] = event.acceleration.y;
-			accel[2] = event.acceleration.z;
+			// We interpolate acceleration to the time of the last gyro event
+			// If I already had a gyro event and I can interpolate, then emit an event
+			if(lastRotatTime != 0 && lastAccelTime != 0){
 
-			accTime = event.timestamp;
+				uint64_t span = event.timestamp - lastAccelTime; // Time between the events being interpolated
+				uint64_t dt = event.timestamp - lastRotatTime;
+
+				float alpha; // Percent of the last value to use
+
+				if(span == 0)
+					alpha = 0;
+				else
+					alpha = dt / span;
+
+				// Perform interpolation
+				float interp[3];
+				interp[0] = alpha*event.vector.x  + (1. - alpha)*lastAccel[0];
+				interp[1] = alpha*event.vector.y  + (1. - alpha)*lastAccel[1];
+				interp[2] = alpha*event.vector.z  + (1. - alpha)*lastAccel[2];
+
+
+				if(current_listener != NULL) {
+					current_listener(/*lastAccel*/ interp, lastRotat, lastRotatRelTime);
+				}
+
+			}
+
+
+			lastAccel[0] = event.vector.x;
+			lastAccel[1] = event.vector.y;
+			lastAccel[2] = event.vector.z;
+
+			lastAccelRelTime = RELATIVE_TIME;
+			lastAccelTime = event.timestamp; // TODO: Are these timestamps monotonic? And are they relative to epoch?
+
+
+			LOGI("A: %llu", event.timestamp);
+
 		}
-		else if(event.type == ASENSOR_TYPE_GYROSCOPE) {
-			//LOGI("gyro(x,y,z,t): %f %f %f %lld", event.acceleration.x, event.acceleration.y, event.acceleration.z, event.timestamp);
-			rotat[0] = event.acceleration.x;
-			rotat[1] = event.acceleration.y;
-			rotat[2] = event.acceleration.z;
+		else if(event.type == ASENSOR_TYPE_GYROSCOPE){
+			lastRotat[0] = event.vector.x;
+			lastRotat[1] = event.vector.y;
+			lastRotat[2] = event.vector.z;
+			lastRotatRelTime =  RELATIVE_TIME;
+			lastRotatTime = event.timestamp;
 
-			gyroTime = event.timestamp;
-		}
-		else if(event.type == ASENSOR_TYPE_MAGNETIC_FIELD) {
-			magnet[0] = event.magnetic.x;
-			magnet[1] = event.magnetic.y;
-			magnet[2] = event.magnetic.z;
-
-			magTime = event.timestamp;
+			LOGI("G: %llu", event.timestamp);
 		}
 
-
-	//if(vio_inst->recorder.recording()){
-	//	vio_inst->recorder.onData(accel, rotat);
-	//}
-	//vio_inst->impl.propagate_inertial(accel, rotat);
+		/*
+		if(lastAccelTime != 0 && lastRotatTime != 0){
 
 
+
+			lastAccelTime = 0;
+			lastRotatTime = 0;
+		}
+		*/
 	}
-
-
-
-	// TODO: Make sure this only triggers the listener if both accel and gyro were recorded
-
-	if(current_listener != NULL){
-		current_listener(accel, rotat);
-	}
-
-
-
-	float dAt = ((float)(accTime-lastAccTime))/1000000000.0;
-	float dGt = ((float)(gyroTime-lastGyroTime))/1000000000.0;
-	float dMt = ((float)(magTime-lastMagTime))/1000000000.0;
-
-	//LOGI("%f %f %f", dAt, dGt, dMt);
-
-	lastAccTime = accTime;
-	lastGyroTime = gyroTime;
-	lastMagTime = magTime;
-
-	//LOGI("%d: %f %f %f %f %f %f %f %f %f",n,ax,ay,az,gx,gy,gz, mx, my, mz);
-
-
 
 
 	//should return 1 to continue receiving callbacks, or 0 to unregister
@@ -111,8 +144,22 @@ static int get_sensor_events(int fd, int events, void *data) {
 }
 
 
+void inertial_init(){
+
+	startreal = getrealtime();
+	starttime = gettime();
+
+	LOGI("START TIME %llu", startreal);
+}
+
 
 void inertial_enable(){
+
+	lastAccelTime = 0;
+	lastRotatTime = 0;
+	lastAccelRelTime = 0;
+	lastRotatRelTime = 0;
+
 
     ALooper* looper = ALooper_forThread();
 
@@ -127,9 +174,7 @@ void inertial_enable(){
     //magnSensor = ASensorManager_getDefaultSensor(sensorManager, ASENSOR_TYPE_MAGNETIC_FIELD);
 
 
-    void *sensor_data = malloc(1024); // TODO: Free this memory on cleanup
-
-    eventQueue = ASensorManager_createEventQueue(sensorManager, looper, 1, get_sensor_events, sensor_data);
+    eventQueue = ASensorManager_createEventQueue(sensorManager, looper, 1, get_sensor_events, NULL);
 
     ASensorEventQueue_enableSensor(eventQueue, accelSensor);
     ASensorEventQueue_enableSensor(eventQueue, gyroSensor);
@@ -152,9 +197,7 @@ void inertial_enable(){
 
 
 void inertial_disable(){
-
     ASensorManager_destroyEventQueue(sensorManager, eventQueue);
-
 }
 
 void inertial_setlistener(inertial_listener l){

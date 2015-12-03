@@ -39,6 +39,6 @@ task ndkBuild(type: Exec) {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile project(':ext:opencv:sdk:java')
+    //compile project(':ext:opencv:sdk:java')
     compile 'com.android.support:support-v4:22.2.1'
 }

@@ -8,12 +8,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import org.opencv.android.CameraBridgeViewBase;
-
 
 public class TrackingFragment extends Fragment {
 
-    private CameraBridgeViewBase mOpenCvCameraView;
+//    private CameraBridgeViewBase mOpenCvCameraView;
 
 
     public TrackingFragment() {
@@ -35,8 +33,8 @@ public class TrackingFragment extends Fragment {
         // Inflate the layout for this fragment
         View view =  inflater.inflate(R.layout.fragment_tracking, container, false);
 
-        mOpenCvCameraView = (CameraBridgeViewBase) view.findViewById(R.id.surfaceView);
-        mOpenCvCameraView.enableFpsMeter();
+        //mOpenCvCameraView = (CameraBridgeViewBase) view.findViewById(R.id.surfaceView);
+        //mOpenCvCameraView.enableFpsMeter();
 
         return view;
     }
@@ -45,13 +43,13 @@ public class TrackingFragment extends Fragment {
     @Override
     public void onResume(){
         super.onResume();
-        mOpenCvCameraView.enableView();
+        //mOpenCvCameraView.enableView();
     }
 
     @Override
     public void onPause(){
         super.onPause();
-        mOpenCvCameraView.disableView();
+        //mOpenCvCameraView.disableView();
     }
 
 }

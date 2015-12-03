@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/android.iml" filepath="$PROJECT_DIR$/android.iml" />
+      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ext/ext.iml" filepath="$PROJECT_DIR$/ext/ext.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ext/opencv/sdk/java/java.iml" filepath="$PROJECT_DIR$/ext/opencv/sdk/java/java.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ext/opencv/opencv.iml" filepath="$PROJECT_DIR$/ext/opencv/opencv.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ext/opencv/sdk/sdk.iml" filepath="$PROJECT_DIR$/ext/opencv/sdk/sdk.iml" />
+    </modules>
+  </component>
+</project>

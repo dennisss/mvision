@@ -3,6 +3,8 @@ package me.denniss.mvision;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.FragmentManager;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -14,16 +16,16 @@ import android.widget.SlidingDrawer;
 import android.widget.ToggleButton;
 import android.support.v4.widget.DrawerLayout;
 
-import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.CameraBridgeViewBase;
-import org.opencv.android.LoaderCallbackInterface;
-import org.opencv.android.OpenCVLoader;
-
-import org.opencv.core.Mat;
+import java.util.List;
 
 import me.denniss.mvision.vio.VisualInertialOdometry;
 
 public class MainActivity extends Activity implements DrawerFragment.OnDrawerInteractionListener {
+
+    // TODO: As the library has the Recording stuff as well, maybe it should be moved somewhere else
+    static {
+        System.loadLibrary("vio");
+    }
 
     private static final String TAG = "MainActivity";
 
@@ -35,7 +37,7 @@ public class MainActivity extends Activity implements DrawerFragment.OnDrawerInt
 
 
     // TODO: Having OpenCV directly linked doesn't seem necessary as it is separately built into libvio anyway
-
+    /*
     private BaseLoaderCallback  mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
         public void onManagerConnected(int status) {
@@ -65,7 +67,7 @@ public class MainActivity extends Activity implements DrawerFragment.OnDrawerInt
             }
         }
     };
-
+    */
 
 
     @Override
@@ -82,6 +84,13 @@ public class MainActivity extends Activity implements DrawerFragment.OnDrawerInt
         DrawerLayout drawerLayout = (DrawerLayout) findViewById(R.id.drawerLayout);
         DrawerFragment drawerFrag = (DrawerFragment) getFragmentManager().findFragmentById(R.id.drawer);
         drawerFrag.configure(findViewById(R.id.drawer), drawerLayout);
+
+
+		SensorManager mgr = (SensorManager) getSystemService(SENSOR_SERVICE);
+		List<Sensor> sensors = mgr.getSensorList(Sensor.TYPE_ALL);
+		for (Sensor sensor : sensors) {
+			Log.d("Sensors", "" + sensor.getName());
+		}
 
     }
 
@@ -141,6 +150,7 @@ public class MainActivity extends Activity implements DrawerFragment.OnDrawerInt
     public void onResume(){
         super.onResume();
 
+        /*
         if (!OpenCVLoader.initDebug()) {
             Log.d(TAG, "Internal OpenCV library not found. Using OpenCV Manager for initialization");
             OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION_3_0_0, this, mLoaderCallback);
@@ -148,6 +158,7 @@ public class MainActivity extends Activity implements DrawerFragment.OnDrawerInt
             Log.d(TAG, "OpenCV library found inside package. Using it!");
             mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
         }
+        */
     }
 
     @Override

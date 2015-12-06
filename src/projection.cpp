@@ -2,7 +2,6 @@
 
 #include "msckf.h"
 
-
 MatrixXd pinv(MatrixXd &X){
 	return (X.transpose()*X).inverse()*X.transpose();
 }
@@ -78,6 +77,8 @@ Matrix<double, 2, 3> JacobianH(Vector3d vec, Calibration &calib){
 	double u = x / z, v = y / z;
 	double r = u*u + v*v;
 
+
+
 	Matrix<double, 1, 3> du_dx; du_dx << 1.0 / z, 0, -x/(z*z);
 	Matrix<double, 1, 3> dv_dx; dv_dx << 0, 1.0 / z, -y/(z*z);
 
@@ -111,75 +112,66 @@ Matrix<double, 2, 3> JacobianH(Vector3d vec, Calibration &calib){
 }
 
 
+#include <iostream>
+
+
 /* Pairwise least-squares  */
 Vector3d triangulate(Quaterniond &qC1, Vector3d &pC1, Quaterniond &qC2, Vector3d &pC2, Vector2d &z1, Vector2d &z2, Calibration &calib){
 
+	// TODO: This doesn't consider distortion
 
-	Vector3d v1(z1(0), z1(1), 1);
-	Vector3d v2(z2(0), z2(1), 1);
-	v1.normalize();
-	v2.normalize();
+	Vector3d v1((z1(0) - calib.o_x) / calib.f_x, (z1(1) - calib.o_y) / calib.f_y, 1); v1.normalize();
+	Vector3d v2((z2(0) - calib.o_x) / calib.f_x, (z2(1) - calib.o_y) / calib.f_y, 1); v2.normalize();
 
-	Matrix2d A;
-	A << v1, v2;
+	Matrix<double, 3, 2> A;
+	A << v1, -((qC2*qC1.conjugate())._transformVector(v2));
 
-//	Vector2d b =
+	Vector3d b = pC2 - pC1;
 
-	/////A << RowVector3d((z1.x() - calib.o_x) / calib.f_x, (z1.y() - calib.o_y) / calib.f_y, 1),
-
-	Vector4d b;
-	b << pC1,
-		 pC2;
+	MatrixXd x = (A.transpose()*A).inverse()*A.transpose()*b; // pinv(A)*b; // this will be a 2x1
 
 
-	Vector2d x; ///= pinv(A) * b;
-
-	return Vector3d(0,0,0); //pC1 + x(0)*A.row(0).transpose();
-
-	// Ray1 = pC1 + qC1.conjugate._transformVector(z1 - oCenter   ) k
-
-
+	return x(0)*v1 + pC1;
 }
 
 
 
-#include <iostream>
-
 /* Gauss-Newton triangulation of a point given many measurements */
 Vector3d triangulate(vector<Quaterniond> &qC, vector<Vector3d> &pC, vector<Vector2d> &pts, Calibration &calib){
 
-	// TODO: Model the first and last
-
 	// There should be one observation per image
-	//assert(qCs.size() == pts.size());
-
-
-
-
-
-	// TODO: Normalize input measurements (undistort and apply (u - c_u) / f_u )
-
-
-	// TODO: Initialize guess at the feature position from pair-wise camera triangulation of first and last poses
-	//Vector3d initial = triangulate(R[0], p[0], R[R.size() - 1], p[p.size() - 1], pts[0], pts[pts.size() - 1]);
-	// OpenCV has the triangulatePoints function for the pair-wise case
+	assert(qC.size() == pts.size());
+	assert(pC.size() == pts.size());
 
 
 	// Compute poses relative to first camera
 	// TODO: Using rotation matrices would probably be more efficient due to the number of operations
+
+	int n = pts.size();
+
+
+	MatrixXd W = MatrixXd::Zero(2*n, 2*n);
+
 	vector<Quaterniond> C0qCi(pts.size());
 	vector<Vector3d> CipC0(pts.size());
 	for(int i = 0; i < pts.size(); i++){
 		C0qCi[i] = qC[i] * qC[0].inverse();
 		CipC0[i] = qC[i]._transformVector( pC[0] - pC[i] );
+
+
+		double a = 1.0 / calib.sigma_img; //1.0 / calib.sigma_img*calib.sigma_img;
+		W.block<2,2>(2*i, 2*i) = Vector2d(a /* x variance */,  a /* y variance */).asDiagonal();
 	}
 
 
-	Vector3d theta(0, 0, 0.0001); // Initial inverse-depth parameter estimate (1 unit ahead of first camera
+	Vector3d guess = triangulate(qC[0], pC[0], qC.back(), pC.back(), pts[0], pts.back(), calib);
+	guess = qC[0]._transformVector(guess - pC[0]);
+
+	Vector3d theta(guess[0] / guess[2], guess[1] / guess[2], 1 / guess[2]); //(0, 0, 0.0001); // Initial inverse-depth parameter estimate (1 unit ahead of first camera
 
 	/* Minimizing sum of square reprojection errors */
 
-	int n = pts.size();
+
 	MatrixXd Jf(2*n, 3); // Jacobian of reprojection errors
 	VectorXd f(2*n); // Evaluation of reprojection error
 	for(int it = 0; it < 20; it++){
@@ -192,7 +184,6 @@ Vector3d triangulate(vector<Quaterniond> &qC, vector<Vector3d> &pC, vector<Vecto
 			Vector2d x = camera_project(v, calib);
 
 			Matrix3d Jg; // Jacobian of the inversedepth-to-3d function
-			// R and p are the relative rotations and translations from the first camera
 			Jg << C0qCi[i]._transformVector( Vector3d(1, 0, 0) ),
 				  C0qCi[i]._transformVector( Vector3d(0, 1, 0) ),
 				  CipC0[i];
@@ -203,24 +194,8 @@ Vector3d triangulate(vector<Quaterniond> &qC, vector<Vector3d> &pC, vector<Vecto
 		}
 
 
-
-
-//		cout << "E: " << sqrt(f.squaredNorm() / pts.size()) << endl;
-
-		// TODO: Check early termination based on f
-		//if(f.squaredNorm() < 4*n)
-		//	break;
-
-//		cout << (pinv(Jf)*f) << endl << endl;
-
-		// TODO: Should this be += or -=
 		theta += pinv(Jf)*f;
 	}
-
-	// TODO: Make sure that no observations are triangulated behind the camera
-
-
-	//cout << theta(0) << " " << theta(1) << " " << theta(2) << endl;
 
 
 	if(theta(2) <= 0){

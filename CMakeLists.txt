@@ -17,17 +17,24 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(include)
 
 
-add_executable(mvision
-	src/main.cpp
+
+add_library(vio
 	src/msckf.cpp
 	src/msckf_imgproc.cpp
 	src/utils.cpp
-	src/fileio.cpp
-	src/MadgwickAHRS.cpp
 	src/projection.cpp
 	src/stat.cpp
+	src/fileio.cpp
+)
+set_target_properties(vio PROPERTIES COMPILE_FLAGS "-std=c++11 -w -g -O3") #  -g
+target_link_libraries(vio ${OpenCV_LIBS} ${ZLIB_LIBRARIES})
+
+
+add_executable(mvision
+	src/main.cpp
+	src/MadgwickAHRS.cpp
 	src/testing.cpp
 )
 
 set_target_properties(mvision PROPERTIES COMPILE_FLAGS "-std=c++11 -w -g -O3") #  -g
-target_link_libraries(mvision ${OpenCV_LIBS} ${ZLIB_LIBRARIES})
+target_link_libraries(mvision ${OpenCV_LIBS} vio)

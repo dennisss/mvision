@@ -1,0 +1,17 @@
+~*
+*.o
+*.so
+*.o.d
+*.pyc
+
+android/ext
+
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+
+bin
+
+out
+data

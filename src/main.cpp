@@ -71,12 +71,12 @@ int compute_msckf(int64_t starttime /* time at which video starts recording */, 
 	MSCKF model;
 
 
-	model.calib.sigma_ac = 0.034;
-	model.calib.sigma_gc = 0.005;
-	model.calib.sigma_wac = 0.001; // TODO: Check the walk parameters
-	model.calib.sigma_wgc = 0.0001;
+	model.calib.sigma_ac = 0.0034; // 0.034;
+	model.calib.sigma_gc = 0.0005; //0.005;
+	model.calib.sigma_wac = 0.001; // 0.001; // TODO: Check the walk parameters
+	model.calib.sigma_wgc = 0.0001; //0.0001;
 
-	model.calib.sigma_img = 1000; // 0.24;
+	model.calib.sigma_img = 120; //1000; // 0.24;
 
 	model.calib.Rbc << 0, -1, 0, // Body to camera
 				 -1, 0, 0,
@@ -111,6 +111,8 @@ int compute_msckf(int64_t starttime /* time at which video starts recording */, 
 
 	cout << "~G: " << avg_acc.norm() << endl;
 
+	model.calib.g = avg_acc.norm();
+
 	Quaterniond orient = Quaterniond::FromTwoVectors(Vector3d(0,0,1), avg_acc);
 
 	cout << orient.coeffs().transpose() << endl;
@@ -129,7 +131,7 @@ int compute_msckf(int64_t starttime /* time at which video starts recording */, 
 	namedWindow("image", CV_WINDOW_NORMAL);
 
 
-	uint64_t time = 1447955692095000000;
+	uint64_t time = 1447955692095000000 ; // + 13271168;
 
 	int i = 0;
 
@@ -149,12 +151,14 @@ int compute_msckf(int64_t starttime /* time at which video starts recording */, 
 	//D.at<double>(0,4) = 1.9147234787371266e+00;
 
 
-	int iidx = 0;
-
 	Mat frame;
 	while(true){
 
 		cap >> frame;
+		time += frame_dt;
+
+		cout << "t:" << time << endl;
+
 
 		if(frame.empty())
 			break;
@@ -181,32 +185,35 @@ int compute_msckf(int64_t starttime /* time at which video starts recording */, 
 		}
 
 		cout << "Image" << endl;
-		bool b = model.update_image(frame);
+		model.update_image(frame);
 
-
-		if(!b){
-			out << "update: ";
-		}
-
-		// Save [w x y z] [x y z]
+		// Save [x y z w] [x y z]
 		VectorXd pose = model.state.segment<7>(0);
-		out << pose(3) << " " << pose(0) << " " << pose(1) << " " << pose(2) << " " << pose(4) << " " << pose(5) << " " << pose(6) << endl;
+		out << pose.transpose() << endl;
 
-		cout << "<<" << endl;
 
-		if(!b){
-			iidx++;
-			if(iidx == 2){
 
-			out.flush();
-			exit(0);
+		// Draw
+		for(int i = 0; i < model.tracks.size(); i++){
+			vector<pair<int,Vector2d>> pts = model.tracks[i].extract(model.frames);
+
+			for(int j = 1; j < pts.size(); j++){
+
+				Point2f p1(pts[j-1].second.x(), pts[j-1].second.y()), p2(pts[j].second.x(), pts[j].second.y());
+
+				line(frame, p1, p2, Scalar(255,0,0), 2);
+
+				if(j == pts.size() - 1){
+					circle(frame, p2, 4, Scalar(0,255,0));
+				}
 			}
 		}
 
-		imshow("image", frame);
-		waitKey(delay);
 
-		time += frame_dt;
+
+		imshow("image", frame);
+		//waitKey(delay);
+		waitKey(1);
 	}
 
 
@@ -218,8 +225,8 @@ int compute_msckf(int64_t starttime /* time at which video starts recording */, 
 
 int main(int argc, char *argv[]){
 
-	test_msckf();
-	return 0;
+//	test_msckf();
+//	return 0;
 
 
 	if(argc < 2){

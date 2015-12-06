@@ -46,8 +46,11 @@ bool MSCKF::update_image(Mat &img){
 
 
 	Mat imgGray;
-    cvtColor(img, imgGray, CV_BGR2GRAY);
 
+	if(img.channels() == 3)
+		cvtColor(img, imgGray, CV_BGR2GRAY);
+	else
+		imgGray = img;
 
     vector<KeyPoint> kps;
 	Mat descriptors;
@@ -66,9 +69,6 @@ bool MSCKF::update_image(Mat &img){
 		write_features(featfile, kps, descriptors);
 	}
 
-	for(int i = 0; i < kps.size(); i++){
-		circle(img, kps[i].pt, 4, Scalar(0,255,0));
-	}
 
 	// Matches believed to be correct
 	vector<DMatch> matches;
@@ -134,18 +134,7 @@ bool MSCKF::update_image(Mat &img){
 
 		printf("# good: %d\n", matches.size());
 
-
-		for(int i = 0; i < matches.size(); i++){
-			DMatch &m = matches[i];
-			KeyPoint &kp1 = kps[m.queryIdx];
-			KeyPoint &kp2 = last_kps[m.trainIdx];
-
-			line(img, kp1.pt, kp2.pt, Scalar(255,0,0), 4);
-		}
-
 	}
-
-//	imwrite("matches/" + to_string(i) + ".jpg", img);
 
 	last_descriptors = descriptors;
 	last_kps = kps;
@@ -207,8 +196,6 @@ bool MSCKF::update_image(vector<Vector2d> features, vector<int> matches /* Which
 	// Update frames and tracks
 	frames[frames.size() - 1].features = features;
 
-//	Mat matmatch(1440, 1920, CV_8UC1, Scalar::all(0));
-
 	for(int i = 0; i < features.size(); i++){
 		int t;
 		if(matches[i] == -1 || trackmap.size() == 0/* OR there were no previous matches. TODO: This should't be needed if i change the track format */){ // Doesn't match any existing track
@@ -218,48 +205,10 @@ bool MSCKF::update_image(vector<Vector2d> features, vector<int> matches /* Which
 		}
 		else{
 			t = trackmap[matches[i]];
-
-			int q = tracks[t].indices[tracks[t].indices.size() - 2];
-			assert(q == matches[i]);
-
-			Frame &lastf = frames[frames.size() - 2];
-
-//			Point2f p1(features[i].x(), features[i].y()), p2(lastf.features[q].x(), lastf.features[q].y());
-//
-//			circle(matmatch, p1, 4, Scalar::all(255));
-//			circle(matmatch, p2, 4, Scalar::all(255));
-//			line(matmatch, p1, p2, Scalar::all(255), 1);
-
 		}
 
 		tracks[t].indices.back() = i;
 	}
-
-
-	//imwrite("debug-match.jpg", matmatch);
-
-
-//	Mat matmatch2(1440, 1920, CV_8UC1, Scalar::all(0));
-//	for(int i = 0; i < tracks.size(); i++){
-//		Track &t = tracks[i];
-//		vector<pair<int, Vector2d>> ext = t.extract(frames);
-//
-//		if(ext.size() >= 2){
-//
-//			int l = ext.size() -1;
-//
-//			Point2f p1(ext[l].second.x(), ext[l].second.y()), p2(ext[l-1].second.x(), ext[l-1].second.y());
-//
-//			circle(matmatch2, p1, 4, Scalar::all(255));
-//			circle(matmatch2, p2, 4, Scalar::all(255));
-//			line(matmatch2, p1, p2, Scalar::all(255), 1);
-//
-//
-//		}
-//	}
-
-	//imwrite("debug-match2.jpg", matmatch2);
-
 
 
 
@@ -269,12 +218,10 @@ bool MSCKF::update_image(vector<Vector2d> features, vector<int> matches /* Which
 	VectorXd r0; //(/*0*/);
 	MatrixXd H0(0, covar.cols());
 
-	Mat mat(1440, 1920, CV_8UC1, Scalar::all(0));
-
 	for(int i = 0; i < tracks.size(); i++){
 
 		vector<pair<int, Vector2d>> trk = tracks[i].extract(frames);
-		int n = trk.size(); // t.indices.size(); // Number of measurements TODO: This is wrong (if the last one is -1)
+		int n = trk.size(); // Number of measurements TODO: This is wrong (if the last one is -1)
 
 
 		if(!(n >= WINDOW_SIZE || tracks[i].lost()))
@@ -297,29 +244,24 @@ bool MSCKF::update_image(vector<Vector2d> features, vector<int> matches /* Which
 				Vector3d pi = state.segment<3>(16 + fIdx*10 + 4);
 				Vector3d pCi = pi - qCi.conjugate()._transformVector(calib.CpB); // Global camera position
 
-				// TODO: I need to transform these to the pose of the camera
+
 				qs.push_back(qCi);
 				ps.push_back(pCi);
+
+//				cout << "using " << fIdx << " : " << qCi.coeffs().transpose() << " " << pCi.transpose() << endl;
+
 			}
 
 
 			Vector3d p = triangulate(qs, ps, ms, calib);
 
-			cout << "tri: " << p.transpose() << endl;
-
-			for(int a = 0; a < ms.size() - 1; a++){
-				Point2f p1(ms[a].x(), ms[a].y()), p2(ms[a+1].x(), ms[a+1].y());
-
-				circle(mat, p1, 4, Scalar::all(255));
-				circle(mat, p2, 4, Scalar::all(255));
-				line(mat, p1, p2, Scalar::all(255), 1);
-			}
-
-
 			if(isfinite(p(0)) && isfinite(p(1)) && isfinite(p(2))){
+
+				cout << "tri: " << p.transpose() << endl;
+
+
 				VectorXd r0i = VectorXd(2*n - 3);
 				MatrixXd H0i = MatrixXd(2*n - 3, covar.cols());
-
 
 				// Compute here
 				this->marginalize(trk, p, r0i, H0i);
@@ -344,7 +286,6 @@ bool MSCKF::update_image(vector<Vector2d> features, vector<int> matches /* Which
 		}
 	}
 
-//	imwrite("debug.jpg", mat);
 
 
 
@@ -392,6 +333,7 @@ bool MSCKF::update_image(vector<Vector2d> features, vector<int> matches /* Which
 
 		MatrixXd K = this->covar*H0.transpose() * (H0*this->covar*H0.transpose() + Rn).inverse();
 //		MatrixXd K = covar*TH.transpose()*(TH*covar*TH.transpose() + Rq).inverse();
+
 
 		VectorXd dx = K*r0; // *rq;
 		update_state(dx);
@@ -476,7 +418,7 @@ void MSCKF::marginalize(vector<pair<int, Vector2d>> track /* Pair of frame # and
 	}
 
 
-	cout << r << endl;
+//	cout << r << endl;
 
 
 
@@ -505,6 +447,7 @@ bool MSCKF::is_inlier(VectorXd &ri, MatrixXd &Hi){
 }
 
 
+// TODO: There is a bug with the update_image or update_state because the
 void MSCKF::update_state(VectorXd &dx){
 
 	Quaterniond dq(1, dx(0) / 2.0, dx(1) / 2.0, dx(2) / 2.0);
@@ -561,12 +504,6 @@ void MSCKF::discard_frames(){
 
 	int longest = 0;
 	for(Track &t : tracks){
-
-		cout << ":: ";
-		for(int i = 0; i < t.indices.size(); i++){
-			cout << t.indices[i] << " ";
-		}
-		cout << endl;
 
 		if(t.indices.size() > WINDOW_SIZE){ // Clip tracks that are too long
 			t.indices.erase(t.indices.begin(), t.indices.begin() + (t.indices.size() - WINDOW_SIZE));

@@ -53,11 +53,10 @@ MSCKF::MSCKF(){
 
 
 
-
 	/*
 	int nfeatures = 500;
 	float scaleFactor = 1.2f;
-	int nlevels = 4; // 8
+	int nlevels = 8; // 8
 	int edgeThreshold = 31;
 	int firstLevel = 0;
 	int WTA_K = 2;
@@ -82,6 +81,11 @@ MSCKF::MSCKF(){
 	//featureType = new SURF();
 
 	matcher = new FlannBasedMatcher();
+
+
+	this->wB_last = Vector3d(0,0,0);
+	this->aB_last = Vector3d(0,0,0);
+
 
 }
 
@@ -162,7 +166,7 @@ void MSCKF::propagate_inertial(Vector3d aM /* Acceleration measured w.r.t body *
 
 
 
-	Vector3d g(0, 0, -9.81); // Acceleration of gravity in the global frame
+	Vector3d g(0, 0, -calib.g); // Acceleration of gravity in the global frame
 
 	// Normalize acceleration: This is the acceleration in global frame
 	Vector3d a = q.conjugate()._transformVector(aB) + g; // Estimated accleration w.r.t. ground
@@ -228,6 +232,7 @@ void MSCKF::propagate_inertial(Vector3d aM /* Acceleration measured w.r.t body *
 		calib.sigma_wac*calib.sigma_wac * Vector3d(1, 1, 1);
 	Nc = Nc_diag.asDiagonal();
 	Matrix<double, 15, 15> Qd = 0.5*dt*P*Nc*P.transpose() + Nc;
+
 
 
 	covar.block<15,15>(0, 0) = P * covar.block<15,15>(0, 0) * P.transpose() + Qd;

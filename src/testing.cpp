@@ -76,9 +76,9 @@ void test_msckf(){
 
 
 	model.calib.sigma_ac = 0.01;
-	model.calib.sigma_gc = 0.001;
-	model.calib.sigma_wac = 0.001;
-	model.calib.sigma_wgc = 0.0001;
+	model.calib.sigma_gc = 0.01;
+	model.calib.sigma_wac = 0;//0.001;
+	model.calib.sigma_wgc = 0;//0.0001;
 
 	model.calib.sigma_img = 0.1;
 
@@ -90,7 +90,7 @@ void test_msckf(){
 //				 -1, 0, 0,
 //				 0, 0, -1;
 
-	model.calib.CpB << 0.0, 0, 0; // 0.06, 0, 0
+	model.calib.CpB << 0, 0, 0; // 0.06, 0, 0
 	//model.calib.BpC << 0, 0.06, 0;
 
 	model.calib.f_x = 100;
@@ -102,8 +102,15 @@ void test_msckf(){
 	model.calib.t1 = 0;
 	model.calib.t2 = 0;
 
-	model.aB_last = Vector3d(1, 0, 9.81);
-	model.wB_last = Vector3d(0, 0, 0);
+	model.calib.g = 9.81;
+
+
+	Vector3d a(1, 0, 9.81);
+	Vector3d w(0, 0, 0);
+
+
+	model.aB_last = a;
+	model.wB_last = w;
 
 
 	//double theta = - M_PI / 2.0;
@@ -127,7 +134,10 @@ void test_msckf(){
 		Vector3d p = 0.5*Vector3d(1,0,0)*t*t;
 		Vector3d v = Vector3d(1,0,0)*t;
 
-		model.propagate_inertial(model.aB_last, model.wB_last, i*(NANOPERSEC / 100));
+		model.propagate_inertial(
+			a + 0.02*Vector3d(noise(), noise(), noise()),
+			w + 0.02*Vector3d(noise(), noise(), noise()),
+			i*(NANOPERSEC / 100));
 
 
 
@@ -138,8 +148,13 @@ void test_msckf(){
 				Vector3d(2, 2, 5),
 				Vector3d(-2, -2, 10),
 				Vector3d(-2, 2, 5),
-				Vector3d(2, -2, 10)
+				Vector3d(2, -2, 10),
+				Vector3d(8, 2, 20),
+				Vector3d(15, 7, 40),
+				Vector3d(-5, 6, 15)
 			};
+
+			// TODO: Test the code with perfect triangulations and see if it will converge
 
 
 			vector<Vector2d> measurements(points.size());
@@ -150,16 +165,24 @@ void test_msckf(){
 
 				measurements[j] = camera_project(points[j] - p, model.calib);
 
-				measurements[j] += Vector2d(model.calib.sigma_img*noise(), model.calib.sigma_img*noise());
+				//measurements[j] += Vector2d(model.calib.sigma_img*noise(), model.calib.sigma_img*noise());
 
-				if(i != 50  && i != 90){
+				if(i != 90){
 					matches[j] = j; // Match each to the same one in the previous frame
 				}
 
 
 			}
 
-			model.update_image(measurements, matches);
+//			if(i == 90){
+//				for(int i = 0; i < model.frames.size(); i++){
+//					cout << "c" << to_string(i) << " : " << model.state.segment<7>(16 + 10*i).transpose() << endl;
+//				}
+//			}
+
+
+			//if(i >= 50)
+//				model.update_image(measurements, matches);
 
 		}
 
@@ -168,6 +191,9 @@ void test_msckf(){
 
 		cout << i << ": " << model.state.segment<7>(0).transpose() << endl;
 
+		cout << "e : " << p.transpose() << endl;
+
+		/*
 		if(i == 50){
 			//model.covar = MatrixXd::Identity(model.covar.rows(), model.covar.cols());
 
@@ -176,10 +202,15 @@ void test_msckf(){
 			model.state.segment<3>(7) = v;
 			model.state.segment<3>(10) = Vector3d(0,0,0);
 			model.state.segment<3>(13) = Vector3d(0,0,0);
+
+			model.state.segment<7>(16 + 10*(model.frames.size() - 1)) = model.state.segment<7>(0);
 		}
+		*/
 
 
 	}
+
+
 
 
 

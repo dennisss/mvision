@@ -145,6 +145,8 @@ typedef struct {
 	double o_x, o_y, f_x, f_y;
 	double k1, k2, t1, t2;
 
+	double g;
+
 } Calibration;
 
 

@@ -20,7 +20,7 @@ def quat2mat(q):
 
 
 
-import cv2
+#import cv2
 
 
 if len(sys.argv) != 2:
@@ -29,12 +29,13 @@ if len(sys.argv) != 2:
 
 
 data = np.loadtxt(sys.argv[1], dtype=np.float)
-cap = cv2.VideoCapture('data/1447955692095000000.mp4')
+#cap = cv2.VideoCapture('data/1447955692095000000.mp4')
 
 fig = plt.figure()
-ax = fig.add_subplot(121, projection='3d', aspect=1)
-ax_img = fig.add_subplot(122)
-img_artist = ax_img.imshow(np.zeros((360, 480, 3)))
+ax = fig.add_subplot(111, projection='3d', aspect=1)
+#ax = fig.add_subplot(121, projection='3d', aspect=1)
+#ax_img = fig.add_subplot(122)
+#img_artist = ax_img.imshow(np.zeros((360, 480, 3)))
 
 
 # Create lines for x, y and z
@@ -68,13 +69,13 @@ plt.ion()
 for i in range(0, data.shape[0]):
     print(i)
 
-    ret, frame = cap.read()
-    frame = cv2.resize(frame, (480, 360))
-    im = np.empty_like(frame)
-    im[:,:,0] = frame[:,:,2]
-    im[:,:,1] = frame[:,:,1]
-    im[:,:,2] = frame[:,:,0]
-    img_artist.set_data(im)
+    #ret, frame = cap.read()
+    #frame = cv2.resize(frame, (480, 360))
+    #im = np.empty_like(frame)
+    #im[:,:,0] = frame[:,:,2]
+    #im[:,:,1] = frame[:,:,1]
+    #im[:,:,2] = frame[:,:,0]
+    #img_artist.set_data(im)
 
 
     q = data[i, 0:4]

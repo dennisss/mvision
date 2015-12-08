@@ -24,4 +24,8 @@ ax = fig.add_subplot(111, projection='3d', aspect=1)
 ax.plot(data[:,4], data[:,5], data[:,6])
 
 
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+ax.set_zlabel('Z')
+
 plt.show()
